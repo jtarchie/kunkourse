@@ -98,7 +98,7 @@ RSpec.describe 'Planner' do
       end
 
       context 'with a nested serials' do
-        let(:plan) { serial { serial { serial { task :A; task :B } } } } 
+        let(:plan) { serial { serial { serial { task :A; task :B } } } }
         it_behaves_like 'multiple serial steps plan'
       end
     end
@@ -108,22 +108,22 @@ RSpec.describe 'Planner' do
     shared_examples 'multiple steps in parallel' do
       it 'returns all steps with no state' do
         steps = plan.next
-        expect(steps).to eq [:A, :B]
+        expect(steps).to eq %i[A B]
       end
 
-      it 'returns no steps when one is pending' do
-        expect(plan.next(A: :pending)).to be_empty
-        expect(plan.next(B: :pending)).to be_empty
-      end
-
-      it 'returns no steps when on is success' do
-        expect(plan.next(A: :success)).to be_empty
-        expect(plan.next(B: :success)).to be_empty
+      it 'returns the other step when one is pending' do
+        expect(plan.next(A: :pending)).to eq [:B]
+        expect(plan.next(B: :pending)).to eq [:A]
       end
 
       it 'returns no steps when on is success' do
-        expect(plan.next(A: :failed)).to be_empty
-        expect(plan.next(B: :failed)).to be_empty
+        expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.next(B: :success)).to eq [:A]
+      end
+
+      it 'returns no steps when on is success' do
+        expect(plan.next(A: :failed)).to eq [:B]
+        expect(plan.next(B: :failed)).to eq [:A]
       end
     end
 
@@ -135,6 +135,76 @@ RSpec.describe 'Planner' do
     context 'with one task and one serial' do
       let(:plan) { parallel { task :A; serial { task :B } } }
       it_behaves_like 'multiple steps in parallel'
+    end
+  end
+
+  context 'with composed serial and parallel' do
+    let(:plan) do
+      serial do
+        parallel do
+          task :A
+          task :B
+          serial do
+            task :C
+            task :D
+          end
+          parallel do
+            task :E
+            serial do
+              task :F1
+              task :F2
+            end
+          end
+        end
+        task :G
+      end
+    end
+
+    it 'has an initial state' do
+      steps = plan.next
+      expect(steps).to eq %i[A B C E F1]
+    end
+
+    it 'recommends based on a success state is successful' do
+      expect(plan.next(A: :success)).to eq %i[B C E F1]
+      expect(plan.next(
+               A: :success,
+               B: :success,
+               C: :success,
+               E: :success
+      )).to eq %i[D F1]
+    end
+
+    it 'does not recommend steps if something fails' do
+      expect(plan.next(A: :failed)).to eq []
+      expect(plan.next(
+               A: :success,
+               B: :success,
+               C: :success,
+               E: :failed
+      )).to eq []
+    end
+
+    it 'does not recommend in steps are pending' do
+      expect(plan.next(A: :pending)).to eq []
+      expect(plan.next(
+               A: :success,
+               B: :success,
+               C: :success,
+               E: :pending
+      )).to eq []
+    end
+
+    it 'recommends the last serial step if everything is successful' do
+      expect(plan.next(
+               A: :success,
+               B: :success,
+               C: :success,
+               D: :success,
+               E: :success,
+               F1: :success,
+               F2: :success
+      )).to eq [:G]
     end
   end
 end

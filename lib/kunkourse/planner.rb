@@ -7,7 +7,7 @@ module Kunkourse
         @value = value
       end
 
-      def state(states={})
+      def state(states = {})
         states[@value]
       end
 
@@ -16,7 +16,7 @@ module Kunkourse
       end
     end
 
-    class Parallel
+    class Base
       def self.from_block(&block)
         s = new
         s.instance_eval(&block)
@@ -32,37 +32,40 @@ module Kunkourse
       end
 
       def serial(&block)
-        @tasks << self.class.from_block(&block)
+        @tasks << Serial.from_block(&block)
       end
 
-      def next(states = {})
-        if states.empty?
-          @tasks.flat_map(&:next)
-        else
-          []
-        end
+      def parallel(&block)
+        @tasks << Parallel.from_block(&block)
       end
     end
 
-    class Serial
-      def self.from_block(&block)
-        s = new
-        s.instance_eval(&block)
-        s
+    class Parallel < Base
+      def state(states = {})
+        s = @tasks.map do |task|
+          task.state(states)
+        end.uniq
+        return s.first if s.length == 1
+        return :failed if s.include?(:failed)
+        return :pending if s.include?(:pending)
       end
 
-      def initialize
-        @tasks = []
-      end
+      def next(states = {})
+        tasks = []
+        @tasks.each do |task|
+          case task.state(states)
+          when :success, :failed, :pending
+            next
+          else
+            tasks << task.next(states)
+          end
+        end
 
-      def task(value)
-        @tasks << Task.new(value)
+        tasks.flatten
       end
+    end
 
-      def serial(&block)
-        @tasks << self.class.from_block(&block)
-      end
-
+    class Serial < Base
       def state(states = {})
         s = @tasks.map do |task|
           task.state(states)
@@ -81,11 +84,11 @@ module Kunkourse
           when :failed, :pending
             return []
           else
-            tasks += task.next(states)
+            tasks << task.next(states)
           end
         end
 
-        tasks[0,1]
+        tasks[0, 1].flatten
       end
     end
 
