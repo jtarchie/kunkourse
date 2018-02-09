@@ -38,6 +38,21 @@ module Kunkourse
       def parallel(&block)
         @tasks << Parallel.from_block(&block)
       end
+
+      def valid?
+        values.length == values.uniq.length
+      end
+
+      def values
+        @tasks.flat_map do |task|
+          case task
+          when Task
+            task.value
+          else
+            task.values
+          end
+        end
+      end
     end
 
     class Parallel < Base

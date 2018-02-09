@@ -24,6 +24,10 @@ RSpec.describe 'Planner' do
         steps = plan.next(A: :failed)
         expect(steps).to be_empty
       end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
     end
 
     context 'in serial' do
@@ -68,6 +72,10 @@ RSpec.describe 'Planner' do
         it 'returns no steps' do
           expect(plan.next(A: :success, B: :success)).to eq []
         end
+      end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
       end
     end
 
@@ -125,6 +133,10 @@ RSpec.describe 'Planner' do
         expect(plan.next(A: :failed)).to eq [:B]
         expect(plan.next(B: :failed)).to eq [:A]
       end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
     end
 
     context 'with two tasks' do
@@ -158,6 +170,10 @@ RSpec.describe 'Planner' do
         end
         task :G
       end
+    end
+
+    it 'should be a valid plan' do
+      expect(plan).to be_valid
     end
 
     it 'has an initial state' do
@@ -205,6 +221,14 @@ RSpec.describe 'Planner' do
                F1: :success,
                F2: :success
       )).to eq [:G]
+    end
+  end
+
+  context 'when the same task is defined twice' do
+    it 'reports a invalidation' do
+      expect(serial { task :A; task :A }).to_not be_valid
+      expect(parallel { task :A; task :A }).to_not be_valid
+      expect(parallel { serial { task :A }; serial { task :A } }).to_not be_valid
     end
   end
 end
