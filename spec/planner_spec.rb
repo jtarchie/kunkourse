@@ -103,4 +103,38 @@ RSpec.describe 'Planner' do
       end
     end
   end
+
+  context 'with two steps in parallel' do
+    shared_examples 'multiple steps in parallel' do
+      it 'returns all steps with no state' do
+        steps = plan.next
+        expect(steps).to eq [:A, :B]
+      end
+
+      it 'returns no steps when one is pending' do
+        expect(plan.next(A: :pending)).to be_empty
+        expect(plan.next(B: :pending)).to be_empty
+      end
+
+      it 'returns no steps when on is success' do
+        expect(plan.next(A: :success)).to be_empty
+        expect(plan.next(B: :success)).to be_empty
+      end
+
+      it 'returns no steps when on is success' do
+        expect(plan.next(A: :failed)).to be_empty
+        expect(plan.next(B: :failed)).to be_empty
+      end
+    end
+
+    context 'with two tasks' do
+      let(:plan) { parallel { task :A; task :B } }
+      it_behaves_like 'multiple steps in parallel'
+    end
+
+    context 'with one task and one serial' do
+      let(:plan) { parallel { task :A; serial { task :B } } }
+      it_behaves_like 'multiple steps in parallel'
+    end
+  end
 end

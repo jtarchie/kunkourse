@@ -28,12 +28,19 @@ module Kunkourse
       end
 
       def task(value)
-        @tasks << value
+        @tasks << Task.new(value)
+      end
+
+      def serial(&block)
+        @tasks << self.class.from_block(&block)
       end
 
       def next(states = {})
-        return @tasks if states.empty?
-        []
+        if states.empty?
+          @tasks.flat_map(&:next)
+        else
+          []
+        end
       end
     end
 
