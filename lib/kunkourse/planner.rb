@@ -1,5 +1,21 @@
 module Kunkourse
   module Planner
+    class Task
+      attr_reader :value
+
+      def initialize(value)
+        @value = value
+      end
+
+      def state(states={})
+        states[@value]
+      end
+
+      def next(*)
+        [@value]
+      end
+    end
+
     class Parallel
       def self.from_block(&block)
         s = new
@@ -33,33 +49,36 @@ module Kunkourse
       end
 
       def task(value)
-        @tasks << value
+        @tasks << Task.new(value)
       end
 
       def serial(&block)
         @tasks << self.class.from_block(&block)
       end
 
+      def state(states = {})
+        s = @tasks.map do |task|
+          task.state(states)
+        end.uniq
+        return :success if s == [:success]
+        return :failed if s.include?(:failed)
+        return :pending if s.include?(:pending)
+      end
+
       def next(states = {})
-        puts "tasks: #{@tasks}"
+        tasks = []
         @tasks.each do |task|
-          puts "\ttask: #{task}"
-          case states[task]
+          case task.state(states)
           when :success
             next
           when :failed, :pending
             return []
           else
-            case task
-            when Serial
-              return task.next(states)
-            else
-              return [task]
-            end
+            tasks += task.next(states)
           end
         end
 
-        []
+        tasks[0,1]
       end
     end
 

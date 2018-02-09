@@ -96,6 +96,11 @@ RSpec.describe 'Planner' do
         let(:plan) { serial { serial { task :A }; serial { task :B } } }
         it_behaves_like 'multiple serial steps plan'
       end
+
+      context 'with a nested serials' do
+        let(:plan) { serial { serial { serial { task :A; task :B } } } } 
+        it_behaves_like 'multiple serial steps plan'
+      end
     end
   end
 end
