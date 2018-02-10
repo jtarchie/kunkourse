@@ -8,7 +8,7 @@ module Kunkourse
       end
 
       def state(states = {})
-        states[@value]
+        states[@value] || :unstarted
       end
 
       def next(*)

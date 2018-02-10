@@ -8,18 +8,23 @@ module Kunkourse
           task.state(states)
         end.uniq
         return s.first if s.length == 1
-        return :failed if s.include?(:failed)
-        return :pending if s.include?(:pending)
+        %i[unstarted pending failed].each do |state|
+          return state if s.include?(state)
+        end
       end
 
       def next(states = {})
+        return @failure.first.next(states) if failed?(states) && !@failure.empty?
+
         tasks = []
         @tasks.each do |task|
           case task.state(states)
           when :success, :failed, :pending
             next
-          else
+          when :unstarted
             tasks << task.next(states)
+          else
+            raise 'Cannot determine parallel planner'
           end
         end
 

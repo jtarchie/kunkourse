@@ -191,24 +191,24 @@ RSpec.describe 'Planner' do
       )).to eq %i[D F1]
     end
 
-    it 'does not recommend steps if something fails' do
-      expect(plan.next(A: :failed)).to eq []
+    it 'recommends steps if something fails' do
+      expect(plan.next(A: :failed)).to eq %i[B C E F1]
       expect(plan.next(
                A: :success,
                B: :success,
                C: :success,
                E: :failed
-      )).to eq []
+      )).to eq %i[D F1]
     end
 
-    it 'does not recommend in steps are pending' do
-      expect(plan.next(A: :pending)).to eq []
+    it 'recommends steps if something is pending' do
+      expect(plan.next(A: :pending)).to eq %i[B C E F1]
       expect(plan.next(
                A: :success,
                B: :success,
                C: :success,
                E: :pending
-      )).to eq []
+      )).to eq %i[D F1]
     end
 
     it 'recommends the last serial step if everything is successful' do
@@ -224,11 +224,79 @@ RSpec.describe 'Planner' do
     end
   end
 
-  context 'when the same task is defined twice' do
-    it 'reports a invalidation' do
+  context 'with failure action' do
+    context 'for a serial plan' do
+      let(:plan) do
+        serial do
+          task :A
+          task :B
+          failure do
+            task :C
+          end
+        end
+      end
+
+      it 'does not run the failure on success' do
+        expect(plan.next(A: :success, B: :success)).to be_empty
+      end
+
+      it 'does run failure on a failing task' do
+        expect(plan.next(A: :failed)).to eq [:C]
+        expect(plan.next(A: :success, B: :failed)).to eq [:C]
+      end
+
+      it 'has a failure state for the plan' do
+        expect(plan.state(A: :failed)).to eq :failed
+        expect(plan.state(A: :success, B: :failed)).to eq :failed
+      end
+    end
+
+    context 'for a parallel plan' do
+      let(:plan) do
+        parallel do
+          task :A
+          task :B
+          failure do
+            task :C
+          end
+        end
+      end
+
+      it 'does not run the failure on success' do
+        expect(plan.next(A: :success, B: :success)).to be_empty
+      end
+
+      it 'does run failure on a failing task' do
+        expect(plan.next(A: :failed)).to eq [:B]
+        expect(plan.next(A: :success, B: :failed)).to eq [:C]
+        expect(plan.next(A: :failed, B: :success)).to eq [:C]
+      end
+
+      it 'has a failure state for the plan' do
+        expect(plan.state(A: :failed)).to eq :unstarted
+        expect(plan.state(A: :success, B: :failed)).to eq :failed
+      end
+    end
+  end
+
+  context 'with success action' do
+  end
+
+  context 'with a try action' do
+  end
+
+  context 'with ensure action' do
+  end
+
+  context '#valid?' do
+    it 'only allows the same task to be declared once' do
       expect(serial { task :A; task :A }).to_not be_valid
       expect(parallel { task :A; task :A }).to_not be_valid
       expect(parallel { serial { task :A }; serial { task :A } }).to_not be_valid
+    end
+
+    it 'only allows one failure to be defined' do
+      expect(serial { failure { task :A }; failure { task :B } }).to_not be_valid
     end
   end
 end

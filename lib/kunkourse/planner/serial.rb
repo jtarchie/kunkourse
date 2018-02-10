@@ -10,9 +10,12 @@ module Kunkourse
         return :success if s == [:success]
         return :failed if s.include?(:failed)
         return :pending if s.include?(:pending)
+        :unstarted
       end
 
       def next(states = {})
+        return @failure.first.next(states) if failed?(states) && !@failure.empty?
+
         tasks = []
         @tasks.each do |task|
           case task.state(states)
@@ -20,8 +23,10 @@ module Kunkourse
             next
           when :failed, :pending
             return []
-          else
+          when :unstarted
             tasks << task.next(states)
+          else
+            raise 'Cannot determine serial planner'
           end
         end
 

@@ -11,6 +11,7 @@ module Kunkourse
 
       def initialize
         @tasks = []
+        @failure = []
       end
 
       def task(value)
@@ -25,8 +26,17 @@ module Kunkourse
         @tasks << Parallel.from_block(&block)
       end
 
+      def failure(&block)
+        @failure << Failure.from_block(&block)
+      end
+
       def valid?
-        values.length == values.uniq.length
+        values.length == values.uniq.length &&
+          @failure.length <= 1
+      end
+
+      def failed?(states = {})
+        state(states) == :failed
       end
 
       def values

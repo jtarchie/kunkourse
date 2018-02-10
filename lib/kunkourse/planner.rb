@@ -1,5 +1,6 @@
 require_relative 'planner/base'
 require_relative 'planner/task'
 require_relative 'planner/serial'
+require_relative 'planner/failure'
 require_relative 'planner/parallel'
 require_relative 'planner/dsl'
