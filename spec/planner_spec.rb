@@ -10,6 +10,10 @@ RSpec.describe 'Planner' do
         expect(steps).to eq [:A]
       end
 
+      it 'has an ininstal unstarted state' do
+        expect(plan.state).to eq :unstarted
+      end
+
       it 'returns nothing once it pending' do
         steps = plan.next(A: :pending)
         expect(steps).to be_empty
@@ -56,21 +60,28 @@ RSpec.describe 'Planner' do
         expect(steps).to eq [:A]
       end
 
+      it 'has an initial unstarted state' do
+        expect(plan.state).to eq :unstarted
+      end
+
       it 'returns nothing when the first step is pending' do
         expect(plan.next(A: :pending)).to be_empty
       end
 
       it 'returns the next step on first success' do
         expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.state(A: :success)).to eq :unstarted
       end
 
       it 'returns nothing when the first step has failed' do
         expect(plan.next(A: :failed)).to be_empty
+        expect(plan.state(A: :failed)).to eq :failed
       end
 
       context 'when the final step has finished' do
         it 'returns no steps' do
           expect(plan.next(A: :success, B: :success)).to eq []
+          expect(plan.state(A: :success, B: :success)).to eq :success
         end
       end
 
@@ -119,19 +130,64 @@ RSpec.describe 'Planner' do
         expect(steps).to eq %i[A B]
       end
 
+      it 'has an initial unstarted state' do
+        expect(plan.state).to eq :unstarted
+      end
+
       it 'returns the other step when one is pending' do
         expect(plan.next(A: :pending)).to eq [:B]
+        expect(plan.state(A: :pending)).to eq :unstarted
+
         expect(plan.next(B: :pending)).to eq [:A]
+        expect(plan.state(B: :pending)).to eq :unstarted
       end
 
-      it 'returns no steps when on is success' do
+      it 'returns the other step when one is successful' do
         expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.state(A: :success)).to eq :unstarted
+
         expect(plan.next(B: :success)).to eq [:A]
+        expect(plan.state(B: :success)).to eq :unstarted
       end
 
-      it 'returns no steps when on is success' do
+      it 'returns the other step when one has failed' do
         expect(plan.next(A: :failed)).to eq [:B]
+        expect(plan.state(A: :failed)).to eq :unstarted
+
         expect(plan.next(B: :failed)).to eq [:A]
+        expect(plan.state(B: :failed)).to eq :unstarted
+      end
+
+      context 'when one steps fails and one is successful' do
+        it 'returns no steps' do
+          expect(plan.next(A: :failed, B: :success)).to be_empty
+          expect(plan.next(A: :success, B: :failed)).to be_empty
+        end
+
+        it 'has failed' do
+          expect(plan.state(A: :failed, B: :success)).to eq :failed
+          expect(plan.state(A: :success, B: :failed)).to eq :failed
+        end
+      end
+
+      context 'when both steps fail' do
+        it 'returns no steps' do
+          expect(plan.next(A: :failed, B: :failed)).to be_empty
+        end
+
+        it 'has failed' do
+          expect(plan.state(A: :failed, B: :failed)).to eq :failed
+        end
+      end
+
+      context 'when both steps are successful' do
+        it 'returns no steps' do
+          expect(plan.next(A: :success, B: :success)).to be_empty
+        end
+
+        it 'has failed' do
+          expect(plan.state(A: :success, B: :success)).to eq :success
+        end
       end
 
       it 'should be a valid plan' do
@@ -179,6 +235,7 @@ RSpec.describe 'Planner' do
     it 'has an initial state' do
       steps = plan.next
       expect(steps).to eq %i[A B C E F1]
+      expect(plan.state).to eq :unstarted
     end
 
     it 'recommends based on a success state is successful' do
@@ -249,6 +306,10 @@ RSpec.describe 'Planner' do
         expect(plan.state(A: :failed)).to eq :failed
         expect(plan.state(A: :success, B: :failed)).to eq :failed
       end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
     end
 
     context 'for a parallel plan' do
@@ -276,10 +337,63 @@ RSpec.describe 'Planner' do
         expect(plan.state(A: :failed)).to eq :unstarted
         expect(plan.state(A: :success, B: :failed)).to eq :failed
       end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
     end
   end
 
   context 'with success action' do
+    context 'for a serial plan' do
+      let(:plan) do
+        serial do
+          task :A
+          task :B
+          success do
+            task :C
+          end
+        end
+      end
+
+      it 'runs the success on all steps being successful' do
+        expect(plan.next(A: :success, B: :success)).to eq [:C]
+      end
+
+      it 'does not run success on a failing task' do
+        expect(plan.next(A: :failed)).to eq []
+        expect(plan.next(A: :success, B: :failed)).to eq []
+      end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
+    end
+
+    context 'for a parallel plan' do
+      let(:plan) do
+        parallel do
+          task :A
+          task :B
+          success do
+            task :C
+          end
+        end
+      end
+
+      it 'runs the success on all steps being successful' do
+        expect(plan.next(A: :success, B: :success)).to eq [:C]
+      end
+
+      it 'does not run success on a failing task' do
+        expect(plan.next(A: :failed)).to eq [:B]
+        expect(plan.next(A: :success, B: :failed)).to eq []
+      end
+
+      it 'should be a valid plan' do
+        expect(plan).to be_valid
+      end
+    end
   end
 
   context 'with a try action' do
@@ -297,6 +411,10 @@ RSpec.describe 'Planner' do
 
     it 'only allows one failure to be defined' do
       expect(serial { failure { task :A }; failure { task :B } }).to_not be_valid
+    end
+
+    it 'only allows one success to be defined' do
+      expect(serial { success { task :A }; success { task :B } }).to_not be_valid
     end
   end
 end

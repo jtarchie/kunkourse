@@ -12,6 +12,7 @@ module Kunkourse
       def initialize
         @tasks = []
         @failure = []
+        @success = []
       end
 
       def task(value)
@@ -30,13 +31,22 @@ module Kunkourse
         @failure << Failure.from_block(&block)
       end
 
+      def success(&block)
+        @success << Success.from_block(&block)
+      end
+
       def valid?
         values.length == values.uniq.length &&
-          @failure.length <= 1
+          @failure.length <= 1 &&
+          @success.length <= 1
       end
 
       def failed?(states = {})
         state(states) == :failed
+      end
+
+      def success?(states = {})
+        state(states) == :success
       end
 
       def values

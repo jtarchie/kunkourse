@@ -15,6 +15,7 @@ module Kunkourse
 
       def next(states = {})
         return @failure.first.next(states) if failed?(states) && !@failure.empty?
+        return @success.first.next(states) if success?(states) && !@success.empty?
 
         tasks = []
         @tasks.each do |task|

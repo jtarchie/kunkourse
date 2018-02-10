@@ -7,14 +7,15 @@ module Kunkourse
         s = @tasks.map do |task|
           task.state(states)
         end.uniq
-        return :success if s == [:success]
-        return :failed if s.include?(:failed)
-        return :pending if s.include?(:pending)
-        :unstarted
+        return s.first if s.length == 1
+        %i[failed pending unstarted].each do |state|
+          return state if s.include?(state)
+        end
       end
 
       def next(states = {})
         return @failure.first.next(states) if failed?(states) && !@failure.empty?
+        return @success.first.next(states) if success?(states) && !@success.empty?
 
         tasks = []
         @tasks.each do |task|
