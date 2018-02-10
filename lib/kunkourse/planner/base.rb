@@ -35,6 +35,10 @@ module Kunkourse
         @success << Success.from_block(&block)
       end
 
+      def try(&block)
+        @tasks << Try.from_block(&block)
+      end
+
       def valid?
         values.length == values.uniq.length &&
           @failure.length <= 1 &&

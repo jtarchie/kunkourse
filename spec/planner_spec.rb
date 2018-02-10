@@ -397,6 +397,55 @@ RSpec.describe 'Planner' do
   end
 
   context 'with a try action' do
+    context 'for a serial plan' do
+      let(:plan) do
+        serial do
+          task :A
+          try do
+            task :B
+          end
+        end
+      end
+
+      it 'recommends the try on previous step success' do
+        expect(plan.next).to eq [:A]
+        expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.next(A: :success, B: :success)).to eq []
+      end
+
+      it 'does not affect the success of the serial' do
+        expect(plan.state(A: :success, B: :failed)).to eq :success
+      end
+
+      it 'does not affects the pending of the serial' do
+        expect(plan.state(A: :success, B: :pending)).to eq :pending
+      end
+    end
+
+    context 'for a parallel plan' do
+      let(:plan) do
+        parallel do
+          task :A
+          try do
+            task :B
+          end
+        end
+      end
+
+      it 'recommends the try on previous step success' do
+        expect(plan.next).to eq [:A, :B]
+        expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.next(A: :success, B: :success)).to eq []
+      end
+
+      it 'does not affect the success of the serial' do
+        expect(plan.state(A: :success, B: :failed)).to eq :success
+      end
+
+      it 'does not affects the pending of the serial' do
+        expect(plan.state(A: :success, B: :pending)).to eq :pending
+      end
+    end
   end
 
   context 'with ensure action' do
