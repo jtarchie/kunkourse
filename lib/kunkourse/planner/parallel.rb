@@ -4,18 +4,14 @@ module Kunkourse
   module Planner
     class Parallel < Base
       def state(states = {})
-        s = @tasks.map do |task|
-          task.state(states)
-        end.uniq
-        return s.first if s.length == 1
-        %i[unstarted pending failed].each do |state|
-          return state if s.include?(state)
-        end
+        return on_success.state(states) if on_success?(states)
+        return on_finally.state(states) if on_finally?(states)
+        s = block_state(states)
       end
 
       def next(states = {})
-        return @failure.first.next(states) if failed?(states) && !@failure.empty?
-        return @success.first.next(states) if success?(states) && !@success.empty?
+        return on_failure.next(states) if on_failure?(states)
+        return on_success.next(states) if on_success?(states)
 
         tasks = []
         @tasks.each do |task|
@@ -29,7 +25,20 @@ module Kunkourse
           end
         end
 
+        tasks << on_finally.next(states) if on_finally?(states)
         tasks.flatten
+      end
+
+      private
+
+      def block_state(states = {})
+        s = @tasks.map do |task|
+          task.state(states)
+        end.uniq
+        return s.first if s.length == 1
+        %i[unstarted pending failed].each do |state|
+          return state if s.include?(state)
+        end
       end
     end
   end

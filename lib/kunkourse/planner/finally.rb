@@ -1,6 +1,6 @@
 module Kunkourse
   module Planner
-    class Success < Base
+    class Finally < Base
       def next(states = {})
         @tasks.first.next(states)
       end

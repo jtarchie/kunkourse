@@ -305,6 +305,7 @@ RSpec.describe 'Planner' do
       it 'has a failure state for the plan' do
         expect(plan.state(A: :failed)).to eq :failed
         expect(plan.state(A: :success, B: :failed)).to eq :failed
+        expect(plan.state(A: :success, B: :failed, C: :success)).to eq :failed
       end
 
       it 'should be a valid plan' do
@@ -336,6 +337,8 @@ RSpec.describe 'Planner' do
       it 'has a failure state for the plan' do
         expect(plan.state(A: :failed)).to eq :unstarted
         expect(plan.state(A: :success, B: :failed)).to eq :failed
+        expect(plan.state(A: :failed, B: :success)).to eq :failed
+        expect(plan.state(A: :success, B: :failed, C: :success)).to eq :failed
       end
 
       it 'should be a valid plan' do
@@ -358,6 +361,11 @@ RSpec.describe 'Planner' do
 
       it 'runs the success on all steps being successful' do
         expect(plan.next(A: :success, B: :success)).to eq [:C]
+      end
+
+      it 'returns state of the success step' do
+        expect(plan.state(A: :success, B: :success, C: :success)).to eq :success
+        expect(plan.state(A: :success, B: :success, C: :failed)).to eq :failed
       end
 
       it 'does not run success on a failing task' do
@@ -383,6 +391,11 @@ RSpec.describe 'Planner' do
 
       it 'runs the success on all steps being successful' do
         expect(plan.next(A: :success, B: :success)).to eq [:C]
+      end
+
+      it 'returns state of of the success step' do
+        expect(plan.state(A: :success, B: :success, C: :success)).to eq :success
+        expect(plan.state(A: :success, B: :success, C: :failed)).to eq :failed
       end
 
       it 'does not run success on a failing task' do
@@ -433,7 +446,7 @@ RSpec.describe 'Planner' do
       end
 
       it 'recommends the try on previous step success' do
-        expect(plan.next).to eq [:A, :B]
+        expect(plan.next).to eq %i[A B]
         expect(plan.next(A: :success)).to eq [:B]
         expect(plan.next(A: :success, B: :success)).to eq []
       end
@@ -448,7 +461,60 @@ RSpec.describe 'Planner' do
     end
   end
 
-  context 'with ensure action' do
+  context 'with finally action' do
+    context 'for a serial plan' do
+      let(:plan) do
+        serial do
+          task :A
+          finally do
+            task :B
+          end
+        end
+      end
+
+      it 'does not run finally until ready' do
+        expect(plan.next).to eq [:A]
+        expect(plan.next(A: :success, B: :success)).to eq []
+      end
+
+      it 'returns state of the finally step' do
+        expect(plan.state(A: :success, B: :success)).to eq :success
+        expect(plan.state(A: :success, B: :failed)).to eq :failed
+      end
+
+      it 'runs after any finishing state of the previous task' do
+        expect(plan.next(A: :pending)).to eq []
+        expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.next(A: :failed)).to eq [:B]
+      end
+    end
+
+    context 'for a parallel plan' do
+      let(:plan) do
+        parallel do
+          task :A
+          finally do
+            task :B
+          end
+        end
+      end
+
+      it 'does not run finally until ready' do
+        expect(plan.next).to eq [:A]
+        expect(plan.next(A: :success, B: :success)).to eq []
+      end
+
+      it 'returns state of the finally step' do
+        expect(plan.state(A: :success, B: :success)).to eq :success
+        expect(plan.state(A: :success, B: :failed)).to eq :failed
+      end
+
+      it 'runs after any finishing state of the previous task' do
+        expect(plan.next(A: :pending)).to eq []
+        expect(plan.next(A: :success)).to eq [:B]
+        expect(plan.next(A: :failed)).to eq [:B]
+      end
+    end
   end
 
   context '#valid?' do
@@ -464,6 +530,10 @@ RSpec.describe 'Planner' do
 
     it 'only allows one success to be defined' do
       expect(serial { success { task :A }; success { task :B } }).to_not be_valid
+    end
+
+    it 'only allows one finally to be defined' do
+      expect(serial { finally { task :A }; finally { task :B } }).to_not be_valid
     end
   end
 end

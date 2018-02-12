@@ -13,6 +13,7 @@ module Kunkourse
         @tasks = []
         @failure = []
         @success = []
+        @finally = []
       end
 
       def task(value)
@@ -35,6 +36,10 @@ module Kunkourse
         @success << Success.from_block(&block)
       end
 
+      def finally(&block)
+        @finally << Finally.from_block(&block)
+      end
+
       def try(&block)
         @tasks << Try.from_block(&block)
       end
@@ -42,26 +47,39 @@ module Kunkourse
       def valid?
         values.length == values.uniq.length &&
           @failure.length <= 1 &&
+          @finally.length <= 1 &&
           @success.length <= 1
       end
 
-      def failed?(states = {})
-        state(states) == :failed
-      end
-
-      def success?(states = {})
-        state(states) == :success
-      end
-
       def values
-        @tasks.flat_map do |task|
-          case task
-          when Task
-            task.value
-          else
-            task.values
-          end
-        end
+        @tasks.flat_map(&:values)
+      end
+
+      private
+
+      def on_failure?(states = {})
+        !@failure.empty? && block_state(states) == :failed
+      end
+
+      def on_failure
+        @failure.first
+      end
+
+      def on_success?(states = {})
+        !@success.empty? && block_state(states) == :success
+      end
+
+      def on_success
+        @success.first
+      end
+
+      def on_finally?(states = {})
+        !@finally.empty? &&
+          %i[failed success].include?(block_state(states))
+      end
+
+      def on_finally
+        @finally.first
       end
     end
   end

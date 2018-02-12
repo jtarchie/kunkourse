@@ -1,8 +1,6 @@
 module Kunkourse
   module Planner
     class Task
-      attr_reader :value
-
       def initialize(value)
         @value = value
       end
@@ -11,7 +9,12 @@ module Kunkourse
         states[@value] || :unstarted
       end
 
-      def next(*)
+      def next(states = {})
+        return [@value] if state(states) == :unstarted
+        []
+      end
+
+      def values
         [@value]
       end
     end
