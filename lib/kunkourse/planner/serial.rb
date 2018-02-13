@@ -1,8 +1,11 @@
 require_relative 'base'
+require_relative 'callbacks'
 
 module Kunkourse
   module Planner
     class Serial < Base
+      include Callbacks
+
       def next(states = {})
         return on_failure.next(states) if on_failure?(states)
         return on_success.next(states) if on_success?(states)

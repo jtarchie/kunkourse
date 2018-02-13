@@ -2,11 +2,11 @@
 module Kunkourse
   module Planner
     class Noop
-      def state(states = {})
+      def state(_states = {})
         :success
       end
 
-      def next(states = {})
+      def next(_states = {})
         []
       end
 
