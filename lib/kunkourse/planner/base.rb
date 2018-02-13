@@ -36,6 +36,10 @@ module Kunkourse
       def values
         @tasks.flat_map(&:values)
       end
+
+      def ==(a)
+        a.values == values
+      end
     end
   end
 end
