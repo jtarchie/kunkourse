@@ -3,12 +3,6 @@ require_relative 'base'
 module Kunkourse
   module Planner
     class Serial < Base
-      def state(states = {})
-        return on_success.state(states) if on_success?(states)
-        return on_finally.state(states) if on_finally?(states)
-        block_state(states)
-      end
-
       def next(states = {})
         return on_failure.next(states) if on_failure?(states)
         return on_success.next(states) if on_success?(states)

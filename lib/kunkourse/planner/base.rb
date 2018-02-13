@@ -1,4 +1,5 @@
 require_relative 'task'
+require_relative 'noop'
 
 module Kunkourse
   module Planner
@@ -11,9 +12,9 @@ module Kunkourse
 
       def initialize
         @tasks = []
-        @failure = []
-        @success = []
-        @finally = []
+        @failure = Noop.new
+        @success = Noop.new
+        @finally = Noop.new
       end
 
       def task(value)
@@ -29,15 +30,15 @@ module Kunkourse
       end
 
       def failure(&block)
-        @failure << Failure.from_block(&block)
+        @failure = Failure.from_block(&block)
       end
 
       def success(&block)
-        @success << Success.from_block(&block)
+        @success = Success.from_block(&block)
       end
 
       def finally(&block)
-        @finally << Finally.from_block(&block)
+        @finally = Finally.from_block(&block)
       end
 
       def try(&block)
@@ -45,41 +46,53 @@ module Kunkourse
       end
 
       def valid?
-        values.length == values.uniq.length &&
-          @failure.length <= 1 &&
-          @finally.length <= 1 &&
-          @success.length <= 1
+        values.length == values.uniq.length
       end
 
       def values
         @tasks.flat_map(&:values)
       end
 
+      def state(states = {})
+        s = [
+          block_state(states),
+          on_success.state(states),
+          on_finally.state(states)
+        ].uniq!
+        return s.first if s.length == 1
+        %i[failed pending unstarted].each do |state|
+          return state if s.include?(state)
+        end
+      end
+
+
       private
 
       def on_failure?(states = {})
-        !@failure.empty? && block_state(states) == :failed
+        !on_failure.next(states).empty? &&
+          block_state(states) == :failed
       end
 
       def on_failure
-        @failure.first
+        @failure
       end
 
       def on_success?(states = {})
-        !@success.empty? && block_state(states) == :success
+        !on_success.next(states).empty? &&
+          block_state(states) == :success
       end
 
       def on_success
-        @success.first
+        @success
       end
 
       def on_finally?(states = {})
-        !@finally.empty? &&
+        !on_finally.next(states).empty? &&
           %i[failed success].include?(block_state(states))
       end
 
       def on_finally
-        @finally.first
+        @finally
       end
     end
   end

@@ -517,23 +517,71 @@ RSpec.describe 'Planner' do
     end
   end
 
+  context 'when defining success/failure with a finally' do
+    context 'on a serial plan' do
+      let(:plan) do
+        serial do
+          task :A
+          success do
+            task :B1
+          end
+          failure do
+            task :B2
+          end
+          finally do
+            task :C
+          end
+        end
+      end
+
+      it 'recommends success before the finally' do
+        expect(plan.next(A: :success)).to eq [:B1]
+        expect(plan.next(A: :success, B1: :success)).to eq [:C]
+        expect(plan.next(A: :success, B1: :failed)).to eq [:C]
+      end
+
+      it 'recommends failure before the finally' do
+        expect(plan.next(A: :failed)).to eq [:B2]
+        expect(plan.next(A: :failed, B2: :success)).to eq [:C]
+        expect(plan.next(A: :failed, B2: :failed)).to eq [:C]
+      end
+    end
+
+    context 'on a parallel plan' do
+      let(:plan) do
+        parallel do
+          task :A
+          success do
+            task :B1
+          end
+          failure do
+            task :B2
+          end
+          finally do
+            task :C
+          end
+        end
+      end
+
+      it 'recommends success before the finally' do
+        expect(plan.next(A: :success)).to eq [:B1]
+        expect(plan.next(A: :success, B1: :success)).to eq [:C]
+        expect(plan.next(A: :success, B1: :failed)).to eq [:C]
+      end
+
+      it 'recommends failure before the finally' do
+        expect(plan.next(A: :failed)).to eq [:B2]
+        expect(plan.next(A: :failed, B2: :success)).to eq [:C]
+        expect(plan.next(A: :failed, B2: :failed)).to eq [:C]
+      end
+    end
+  end
+
   context '#valid?' do
     it 'only allows the same task to be declared once' do
       expect(serial { task :A; task :A }).to_not be_valid
       expect(parallel { task :A; task :A }).to_not be_valid
       expect(parallel { serial { task :A }; serial { task :A } }).to_not be_valid
-    end
-
-    it 'only allows one failure to be defined' do
-      expect(serial { failure { task :A }; failure { task :B } }).to_not be_valid
-    end
-
-    it 'only allows one success to be defined' do
-      expect(serial { success { task :A }; success { task :B } }).to_not be_valid
-    end
-
-    it 'only allows one finally to be defined' do
-      expect(serial { finally { task :A }; finally { task :B } }).to_not be_valid
     end
   end
 end
