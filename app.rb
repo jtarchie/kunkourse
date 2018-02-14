@@ -1,34 +1,42 @@
-require 'yaml'
-require_relative './pod'
+require_relative './lib/kunkourse'
 
-def wait_for(pod:)
-  print 'Waiting for pod'
-  print '.' until pod.finished?
+include Kunkourse
+
+pipeline = Pipeline.from_file(File.join(__dir__, 'spec', 'fixtures', 'hello.yml'))
+plan     = BuildPlanner::Job.new(job: pipeline.jobs.first).plan
+
+states = {}
+
+loop do
+  puts 'Iterating over build plans'
+  # are we done with the entire build plan
+  break if %i[failed succesful].include? plan.state(states)
+
+  # when there are more steps
+  puts 'Calculating next steps'
+  next_steps = plan.next(states)
+  next_steps.each do |step|
+    puts "\tstep: #{step}"
+    step.execute!
+    states[step] = :pending
+  end
+
+  # wait for those steps to be done (ie :failed or :success)
+  print 'waiting for steps to complete'
+  loop do
+    next_steps.each do |step|
+      next if step.pending?
+
+      state[step] = :failed if step.failed?
+      state[step] = :success if step.success?
+    end
+    break unless states.values.uniq.include?(:pending)
+    sleep 5 # give it some breathing room
+    print '.'
+  end
   print "\n"
 end
 
-pipeline = YAML.load_file('./spec/fixtures/hello.yml')
-pipeline['jobs'].each do |job|
-  job['plan'].each do |step|
-    next unless step.key?('task')
-    config = step.fetch('config')
-    image_resource = config.fetch('image_resource')
+# done!!!
 
-    check_resource = CheckResource.new(
-      source: image_resource.fetch('source'),
-      resource_type: image_resource.fetch('type')
-    )
-    check_resource.run!
-    wait_for(pod: check_resource)
-    digest   = check_resource.versions.first.fetch('digest')
-
-    task_pod = TaskRunner.new(
-      image_resource: config.fetch('image_resource'),
-      run: config.fetch('run'),
-      digest: digest
-    )
-    task_pod.run!
-    wait_for(pod: task_pod)
-    puts "task: #{task_pod.output}"
-  end
-end
+puts "Finished the job: #{plan.state(states)}"
