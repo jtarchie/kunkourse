@@ -1,5 +1,8 @@
 require_relative './lib/kunkourse'
 
+# cleanup the state of the world
+system("kubectl describe pods pod-kunkourse | grep ^Name: | awk '{print $2}' | xargs kubectl delete pods")
+
 include Kunkourse
 
 pipeline = Pipeline.from_file(File.join(__dir__, 'spec', 'fixtures', 'hello.yml'))
@@ -9,8 +12,10 @@ states = {}
 
 loop do
   puts 'Iterating over build plans'
+  puts "\tstates: #{states.values.inspect}"
+  puts "\tplan: #{plan.state(states)}"
   # are we done with the entire build plan
-  break if %i[failed succesful].include? plan.state(states)
+  break if %i[failed success].include? plan.state(states)
 
   # when there are more steps
   puts 'Calculating next steps'
@@ -18,18 +23,16 @@ loop do
   next_steps.each do |step|
     puts "\tstep: #{step}"
     step.execute!
-    states[step] = :pending
   end
 
   # wait for those steps to be done (ie :failed or :success)
   print 'waiting for steps to complete'
   loop do
     next_steps.each do |step|
-      next if step.pending?
-
-      state[step] = :failed if step.failed?
-      state[step] = :success if step.success?
+      states[step] = step.state
+      step.tick!
     end
+
     break unless states.values.uniq.include?(:pending)
     sleep 5 # give it some breathing room
     print '.'

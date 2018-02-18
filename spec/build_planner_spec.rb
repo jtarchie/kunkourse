@@ -8,19 +8,16 @@ RSpec.describe 'Build Planner' do
     let(:job) { pipeline.jobs.first }
 
     it 'generates a serial plan for the job' do
+      task = job.plan.steps.first
       repository = Kunkourse::Repository::Memory.new
       expected_plan = serial do
         task Kunkourse::BuildPlanner::Steps::CheckResource.new(
-          name: 'task.say-hello.image_resource.check',
-          repository: repository,
-          source: {'repository' => 'busybox'},
-          type: 'docker-image',
+          resource: task.config.image_resource,
+          repository: repository
         )
         task Kunkourse::BuildPlanner::Steps::Task.new(
-          command: ['echo', 'Hello, world!'],
-          image_resource_name: 'task.say-hello.image_resource.check',
-          name: 'say-hello',
-          repository: repository,
+          task: task,
+          repository: repository
         )
       end
       actual_plan = Kunkourse::BuildPlanner::Job.new(

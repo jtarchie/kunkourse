@@ -11,23 +11,22 @@ module Kunkourse
       end
 
       def plan
-        job, repository = @job, @repository
+        job = @job
+        repository = @repository
         serial do
           job.plan.steps.each do |step|
             case step
             when Kunkourse::Task
-              task Steps::CheckResource.new(
-                name: "task.#{step.name}.image_resource.check",
-                type: step.config.image_resource.type,
-                source: step.config.image_resource.source,
-                repository: repository
-              )
+              task(Steps::CheckResource.new(
+                     resource: step.config.image_resource,
+                     repository: repository
+              ))
               task Steps::Task.new(
-                name: step.name,
-                command: [step.config.run.path] + step.config.run.args,
-                image_resource_name: "task.#{step.name}.image_resource.check",
+                task: step,
                 repository: repository
               )
+            else
+              raise 'Cannot create build plan'
             end
           end
         end
