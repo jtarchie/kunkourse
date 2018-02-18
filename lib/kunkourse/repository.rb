@@ -46,7 +46,7 @@ module Kunkourse
       end
 
       def set_output(name:, output:)
-        @outputs ||= Hash.new
+        @outputs ||= {}
         @outputs[name.dup] = output.dup
       end
 
