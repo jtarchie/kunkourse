@@ -50,6 +50,11 @@ module Kunkourse
         @outputs[name.dup] = output.dup
       end
 
+      def get_output(name:)
+        @outputs ||= {}
+        @outputs[name.dup]
+      end
+
       def create_version(name:, version:)
         @versions ||= Hash.new { |h, k| h[k] = [] }
         @versions[name.dup] << version.dup

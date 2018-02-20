@@ -1,4 +1,5 @@
 require_relative '../lib/kunkourse'
+require 'rspec/wait'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

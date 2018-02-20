@@ -1,17 +1,20 @@
 require 'spec_helper'
 
 RSpec.describe 'Integration Suite' do
-  xit 'handles a simple pipeline' do
+  it 'handles a simple pipeline' do
+    repository = Kunkourse::Repository::Memory.new
     pipeline = Kunkourse::Pipeline.from_file(File.join(__dir__, 'fixtures', 'hello.yml'))
     executor = Kunkourse::Executor.new(
       pipeline: pipeline,
-      repository: Repository::Memory.new
+      repository: repository
     )
+    executor.run!
 
     job = executor.jobs.fetch('hello-world')
     job.trigger!
 
-    task = job.plan.last
-    expect(task.output).to eq "Hello, world!\n"
+    wait_for do
+      repository.get_output(name: 'task.say-hello')
+    end.to eq "Hello, world!\n"
   end
 end

@@ -1,11 +1,5 @@
 module Kunkourse
-  Executor = Struct.new(:pipeline, keyword_init: true) do
-    attr_reader :jobs
-
-    def run!
-      @jobs = pipeline.jobs.map do |job|
-        Executor::Job.new(job)
-      end
-    end
+  Executor = Struct.new(:pipeline, :repository, keyword_init: true) do
+    def run!; end
   end
 end
