@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'steps/task'
 require_relative 'steps/check_resource'
 

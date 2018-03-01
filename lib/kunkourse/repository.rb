@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'tempfile'
 require 'digest'
@@ -59,6 +61,8 @@ module Kunkourse
         @versions ||= Hash.new { |h, k| h[k] = [] }
         @versions[name.dup] << version.dup
       end
+
+      def create_build(job:); end
 
       def latest_version(name:)
         @versions[name.dup].last

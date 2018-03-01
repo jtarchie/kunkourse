@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'planner/base'
 require_relative 'planner/task'
 require_relative 'planner/serial'
